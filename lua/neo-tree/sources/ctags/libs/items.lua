@@ -2,9 +2,13 @@ local renderer = require("neo-tree.ui.renderer")
 local Job = require("plenary.job")
 
 local function format_item_path(parent, name)
-  if parent == nil then return name end
+  if parent == nil then
+    return name
+  end
   parent = string.gsub(parent, "^[^:]+:", "")
-  if name == nil then return parent end
+  if name == nil then
+    return parent
+  end
   return string.format("%s.%s", parent, name)
 end
 
@@ -34,7 +38,9 @@ local function parse_ctags_outputs(lines)
     local type = parsed[4]
     local parent_fullname = format_item_path(parsed[5], nil) or ""
     cache[fullname] = true
-    if not cache[parent_fullname] then parent_fullname = "" end
+    if not cache[parent_fullname] then
+      parent_fullname = ""
+    end
 
     table.insert(result, {
       shortname = shortname,
@@ -59,7 +65,7 @@ local function create_result_items(ctags_items)
         type = ctags_item.type,
         filename = ctags_item.filename,
         pattern = ctags_item.pattern,
-      }
+      },
     }
     if result_items[result_item.id] == nil then -- dublicate key
       result_items[result_item.id] = result_item
@@ -69,9 +75,12 @@ local function create_result_items(ctags_items)
         parent_item = {}
         result_items[ctags_item.parent_fullname] = parent_item
       end
-      if parent_item.children == nil then parent_item.children = {} end
+      if parent_item.children == nil then
+        parent_item.children = {}
+      end
       table.insert(parent_item.children, result_item)
       parent_item.type = "directory"
+      parent_item._is_expanded = true
     end
   end
 
@@ -79,6 +88,22 @@ local function create_result_items(ctags_items)
   if root ~= nil then
     return root.children
   end
+end
+
+local function expand_all(state)
+  local renderer = require("neo-tree.ui.renderer")
+  local node_expander = require("neo-tree.sources.common.node_expander")
+  local async = require("plenary.async")
+  local tree = state.tree
+  -- local node = tree:get_node()
+  local task = function()
+    for _, node in ipairs(tree:get_nodes()) do
+      node_expander.expand_directory_recursively(state, node, node_expander.default_prefetcher)
+    end
+  end
+  async.run(task, function()
+    renderer.redraw(state)
+  end)
 end
 
 local M = {}
@@ -90,6 +115,7 @@ M.get_ctags = function(filename, state)
       local result_items = create_result_items(ctags_items)
       if result_items ~= nil then
         renderer.show_nodes(result_items, state)
+        expand_all(state)
       end
     end)
   end
