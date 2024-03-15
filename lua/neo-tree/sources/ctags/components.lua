@@ -14,7 +14,55 @@ local highlights = require("neo-tree.ui.highlights")
 local common = require("neo-tree.sources.common.components")
 local utils = require("neo-tree.utils")
 
+local icons = {
+  c = "󰠱", -- Class
+  f = "󰊕", -- Function
+  m = "󰊕", -- method
+  v = "󰀫", -- Variable
+  Text = "󰉿",
+  Constructor = "",
+  Field = "󰜢",
+  Interface = "",
+  Module = "",
+  Property = "󰜢",
+  Unit = "󰑭",
+  Value = "󰎠",
+  Enum = "",
+  Keyword = "󰌋",
+  Snippet = "",
+  Color = "󰏘",
+  File = "󰈙",
+  Reference = "󰈇",
+  Folder = "󰉋",
+  EnumMember = "",
+  Constant = "󰏿",
+  Struct = "󰙅",
+  Event = "",
+  Operator = "󰆕",
+  TypeParameter = "",
+}
+
 local M = {}
+M.indent = common.indent
+M.icon = function(config, node, state)
+  local icon = icons[node.extra.type]
+  if icon ~= nil then
+    return {
+      text = string.format("%s ", icon),
+      highlight = highlights.FILE_ICON,
+    }
+  end
+end
+M.created = function(config, node, state) end
+M.last_modified = function(config, node, state) end
+M.file_size = function(config, node, state) end
+
+M.type = function(config, node, state)
+  return {
+    text = node.extra.type,
+    highlight = highlight,
+  }
+end
 
 M.name = function(config, node, state)
   local highlight = config.highlight or highlights.FILE_NAME_OPENED

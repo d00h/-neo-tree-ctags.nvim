@@ -16,79 +16,36 @@ local wrap = function(func)
   return utils.wrap(func, M.name)
 end
 
-local get_state = function()
-  return manager.get_state(M.name)
-end
-
-local follow_internal = function()
-  if vim.bo.filetype == "neo-tree" or vim.bo.filetype == "neo-tree-popup" then
-    return
-  end
-  local bufnr = vim.api.nvim_get_current_buf()
-  local path_to_reveal = manager.get_path_to_reveal(true) or tostring(bufnr)
-
-  local state = get_state()
-  if state.current_position == "float" then
-    return false
-  end
-  if not state.path then
-    return false
-  end
-  local window_exists = renderer.window_exists(state)
-  if window_exists then
-    local node = state.tree and state.tree:get_node()
-    if node then
-      if node:get_id() == path_to_reveal then
-        -- already focused
-        return false
-      end
-    end
-    renderer.focus_node(state, path_to_reveal, true)
-  end
-end
 
 M.follow = function()
-  if vim.fn.bufname(0) == "COMMIT_EDITMSG" then
-    return false
-  end
-  utils.debounce("neo-tree-buffer-follow", function()
-    return follow_internal()
-  end, 100, utils.debounce_strategy.CALL_LAST_ONLY)
 end
 
 ---Navigate to the given path.
 ---@param path string Path to navigate to. If empty, will navigate to the cwd.
 M.navigate = function(state, path, path_to_reveal)
-  state.dirty = false
+  state.dirty = true
+  local winid, _ = utils.get_appropriate_window(state)
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  local bufname = vim.api.nvim_buf_get_name(bufnr)
 
-  if path_to_reveal then renderer.position.set(state, path_to_reveal) end
-  items.get_ctags(path_to_reveal, state)
+  items.get_ctags(bufname, state)
+
 end
 
 ---Configures the plugin, should be called before the plugin is used.
 ---@param config table Configuration table containing any keys that the user
 --wants to change from the defaults. May be empty to accept default values.
 M.setup = function(config, global_config)
-  --Configure events for before_render
   if config.before_render then
-    --convert to new event system
     manager.subscribe(M.name, {
       event = events.BEFORE_RENDER,
       handler = function(state)
-        local this_state = get_state()
+        local this_state = manager.get_state(M.name)
         if state == this_state then
           config.before_render(this_state)
         end
       end,
     })
-  end
-
-  local refresh_events = {
-    events.VIM_BUFFER_ADDED,
-    events.VIM_BUFFER_DELETED,
-  }
-  if global_config.enable_refresh_on_write then
-    table.insert(refresh_events, events.VIM_BUFFER_CHANGED)
   end
 end
 
